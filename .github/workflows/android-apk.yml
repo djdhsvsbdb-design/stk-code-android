@@ -40,8 +40,8 @@ jobs:
 
       - name: Install Android SDK components
         run: |
-          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.1.13356709"
           yes | sdkmanager --licenses
+          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.1.13356709"
 
       - name: Install Linux build dependencies
         run: |
