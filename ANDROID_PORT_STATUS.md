@@ -38,10 +38,16 @@ The documented build requires:
 - No emulator or physical-device test has been run.
 - Multiplayer has not been runtime-tested.
 
+## GitHub Actions build
+
+- Added `.github/workflows/android-apk.yml` on branch `android-port-work`.
+- The workflow downloads the Android dependency sources and `stk-assets`, installs Android SDK 35 and NDK 28.1.13356709, builds `arm64-v8a` dependencies and a debug APK, then uploads the APK as a 14-day artifact.
+- A push to `android-port-work` that changes Android/source/dependency/assets paths triggers the workflow.
+- The workflow has been committed, but its first run and APK output still need to be checked in GitHub Actions.
+
 ## Next steps
 
-1. Verify the exact source revision and matching assets/dependency package.
-2. Run the debug build for `arm64-v8a` first.
-3. Fix reproducible build errors without changing upstream gameplay code unnecessarily.
-4. Install and test on a physical Android device.
-5. Test touch controls, graphics, audio, suspend/resume and online connectivity.
+1. Inspect the first GitHub Actions run and fix any reproducible build errors.
+2. Confirm that the APK artifact was uploaded.
+3. Install and test on a physical Android device.
+4. Test touch controls, graphics, audio, suspend/resume and online connectivity.
