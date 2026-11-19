@@ -453,7 +453,7 @@ export ANDROID_HOME="$SDK_PATH"
           -Ppackage_name="$PACKAGE_NAME"                 \
           -Pversion_name="$PROJECT_VERSION"              \
           -Pversion_code="$PROJECT_CODE"                 \
-          $GRADLE_BUILD_TYPE
+          $GRADLE_BUILD_TYPE || exit $?
 
 if [ "$GRADLE_BUILD_TYPE" = "assembleRelease" ]; then
 ./gradlew -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
@@ -469,7 +469,7 @@ if [ "$GRADLE_BUILD_TYPE" = "assembleRelease" ]; then
           -Ppackage_name="$PACKAGE_NAME"                 \
           -Pversion_name="$PROJECT_VERSION"              \
           -Pversion_code="$PROJECT_CODE"                 \
-          "bundleRelease"
+          "bundleRelease" || exit $?
 fi
 
 check_error
