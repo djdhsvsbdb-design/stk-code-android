@@ -107,7 +107,19 @@ jobs:
           NDK_PATH: ${{ env.ANDROID_HOME }}/ndk
           STK_NDK_VERSION: "28.1.13356709"
           STK_TARGET_ANDROID_SDK: "35"
-        run: ./make.sh
+        run: |
+          for attempt in 1 2 3; do
+            echo "APK build attempt ${attempt}/3"
+            if ./make.sh; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Build failed; waiting 60 seconds before retry"
+              sleep 60
+            fi
+          done
+          echo "APK build failed after 3 attempts"
+          exit 1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
