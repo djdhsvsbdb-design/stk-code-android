@@ -1,0 +1,116 @@
+name: Android APK
+
+on:
+  push:
+    branches: [android-port-work]
+    paths:
+      - "android/**"
+      - "src/**"
+      - "lib/**"
+      - "data/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-arm64:
+    name: Build debug APK (arm64-v8a)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.1.13356709"
+          yes | sdkmanager --licenses
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake build-essential bison flex cmake imagemagick \
+            meson ninja-build pkg-config subversion vorbis-tools pngquant \
+            advancecomp libjpeg-turbo-progs optipng python3-mako python3-packaging
+
+      - name: Download Android native dependency sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p lib
+          curl --fail --location --retry 3 \
+            https://github.com/supertuxkart/dependencies/releases/download/preview/dependencies-android-src.tar.xz \
+            --output /tmp/dependencies-android-src.tar.xz
+          mapfile -t roots < <(tar -tf /tmp/dependencies-android-src.tar.xz | awk -F/ 'NF > 1 {print $1}' | sort -u)
+          if [[ ${#roots[@]} -eq 1 && "${roots[0]}" =~ ^(lib|dependencies-android-src)$ ]]; then
+            tar -xJf /tmp/dependencies-android-src.tar.xz -C lib --strip-components=1
+          else
+            tar -xJf /tmp/dependencies-android-src.tar.xz -C lib
+          fi
+
+      - name: Download game assets
+        run: svn checkout --non-interactive https://svn.code.sf.net/p/supertuxkart/code/stk-assets ../stk-assets
+
+      - name: Cache compiled Android dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            android/deps-arm64-v8a
+            android/mesa/arm64-v8a
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: stk-android-arm64-${{ runner.os }}-${{ hashFiles('android/make_deps.sh', 'android/Android.mk') }}
+          restore-keys: |
+            stk-android-arm64-${{ runner.os }}-
+
+      - name: Generate Android game assets
+        working-directory: android
+        env:
+          ASSETS_PATHS: "../../stk-assets ../supertuxkart-assets ../data"
+          OUTPUT_PATH: assets
+        run: ./generate_assets.sh
+
+      - name: Build native dependencies
+        working-directory: android
+        env:
+          COMPILE_ARCH: aarch64
+          NDK_PATH: ${{ env.ANDROID_HOME }}/ndk
+          STK_NDK_VERSION: "28.1.13356709"
+        run: ./make_deps.sh
+
+      - name: Build APK
+        working-directory: android
+        env:
+          BUILD_TYPE: debug
+          COMPILE_ARCH: aarch64
+          SDK_PATH: ${{ env.ANDROID_HOME }}
+          NDK_PATH: ${{ env.ANDROID_HOME }}/ndk
+          STK_NDK_VERSION: "28.1.13356709"
+          STK_TARGET_ANDROID_SDK: "35"
+        run: ./make.sh
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SuperTuxKart-Android-arm64-debug
+          path: android/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
